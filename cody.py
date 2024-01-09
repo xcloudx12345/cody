@@ -36,12 +36,14 @@ class FileChangeHandler(FileSystemEventHandler):
 		super().__init__()
 		self._busy_files = {}
 		self.cooldown = 5.0  # Cooldown in seconds
-		self.ignore_list = IGNORE_THESE,  # Ignore list
+		self.ignore_list = ['.venv', '.env', 'static', 'dashboard/static', 'audio', 'license.md', '.github', '__pycache__','.git']  # Ignore list
 		self.data = {}
 		self.knowledge_base = {}
 		self.embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001",google_api_key=GOOGLE_API_KEY,task_type="retrieval_document")
 	def should_ignore(self, filename):
 		current_time = time.time()
+		if filename in self.ignore_list:
+			return False
 		if filename in self._busy_files:
 			if current_time - self._busy_files[filename] < self.cooldown:
 				return True
@@ -49,7 +51,7 @@ class FileChangeHandler(FileSystemEventHandler):
 		return False
 
 	def on_modified(self, event):
-		if "response.mp3" not in event.src_path:
+		if ".mp3" not in event.src_path:
 			if not self.should_ignore(event.src_path):
 				print(f'\n\U0001F4BE The file {event.src_path} has changed!')
 				self.update_file_content()
@@ -120,7 +122,6 @@ def play_audio(file_path):
 	os.unlink(file_path)  # Delete the temporary file
 	print("Deleted temp audio file in: " + file_path)
 
-
 def create_audio(text):
 	"""
 	Create an audio file from text and return the path to a temporary file
@@ -133,15 +134,13 @@ def create_audio(text):
 	except Exception as e:
 		print(f"\nError in creating audio: {e}")
 
-    return temp_file_path
+	return temp_file.name
 
 def count_tokens(text):
 	# Phân tách chuỗi văn bản thành các token dựa trên khoảng trắng
 	tokens = text.split()
 	# Đếm và trả về số lượng token
 	return len(tokens)	
-	return temp_file.name
-	
 def generate_response(prompt, speak_response=True):
 
 	try:
@@ -149,8 +148,8 @@ def generate_response(prompt, speak_response=True):
 		print("\n\U0001F4B0 Tokens used:", count_tokens(response_text.content))
 		print('\U0001F916', response_text.content)
 		if speak_response:
-			audio_stream = create_audio(response_text)
-			play_audio("audio/response.mp3")
+			audio_stream = create_audio(response_text.content)
+			play_audio(audio_stream)
 	except Exception as e:
 		print(f"\U000026A0 Error in generating response: {e}")
 
@@ -183,8 +182,6 @@ def monitor_input(handler, terminal_input=True):
 		except Exception as e:
 			print(f"An error occurred: {e}")
 
-def start_cody(ignore_list=[]):
-	handler = FileChangeHandler(ignore_list=IGNORE_THESE)
 def start_cody():
 	#ignore_list=IGNORE_THESE
 	handler = FileChangeHandler(ignore_list=IGNORE_THESE)
@@ -216,4 +213,4 @@ def start_cody():
 	observer.join()
 
 if __name__ == "__main__":
-	start_cody(ignore_list=IGNORE_THESE)
+	start_cody()
