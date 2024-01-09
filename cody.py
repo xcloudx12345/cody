@@ -1,6 +1,5 @@
 from dotenv import load_dotenv
 from langchain.text_splitter import CharacterTextSplitter
-from langchain.embeddings.openai import OpenAIEmbeddings
 from langchain_google_genai import ChatGoogleGenerativeAI,GoogleGenerativeAIEmbeddings 
 from langchain.vectorstores import faiss
 from watchdog.observers import Observer
@@ -9,7 +8,6 @@ import tempfile
 import json
 import time
 import threading
-import openai
 import os
 import speech_recognition as sr
 from gtts import gTTS
@@ -36,17 +34,24 @@ class FileChangeHandler(FileSystemEventHandler):
 		super().__init__()
 		self._busy_files = {}
 		self.cooldown = 5.0  # Cooldown in seconds
-		self.ignore_list = ['.venv', '.env', 'static', 'dashboard/static', 'audio', 'license.md', '.github', '__pycache__','.git']  # Ignore list
+		self.ignore_list = IGNORE_THESE  # Ignore list
 		self.data = {}
 		self.knowledge_base = {}
-		self.embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001",google_api_key=GOOGLE_API_KEY,task_type="retrieval_document")
+		self.embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001",google_api_key=GOOGLE_API_KEY,task_type="retrieval_query")
 	def should_ignore(self, filename):
 		current_time = time.time()
-		if filename in self.ignore_list:
-			return False
+
+		# Check if the file is in the ignore list
+		for item in self.ignore_list:
+			if item in filename:
+				return True
+
+		# Check if the file is in the busy files and within the cooldown period
 		if filename in self._busy_files:
 			if current_time - self._busy_files[filename] < self.cooldown:
 				return True
+
+		# Update the busy files dictionary
 		self._busy_files[filename] = current_time
 		return False
 
