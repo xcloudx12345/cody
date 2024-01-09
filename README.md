@@ -13,11 +13,8 @@ Cody continuously updates its knowledge base every time you save a file, ensurin
 ## 🚀 Getting Started
 
 1. Clone the repo
-2. (Optionally) Setup virtual environment by running `python -m venv .venv` then `.venv\Scripts\activate` and then `pip install -r requirements.txt` in terminal from the root of your directory
-    - After activation, your command prompt should change to indicate that you are now working within the `.venv` virtual environment. You can then install packages into this environment without affecting the global Python installation.
-    - To deactivate the virtual environment and return to the global Python environment, simply run:
-`deactivate`
-3. Rename the `.local.env` file to `.env` and replace `YOUR_API_KEY_HERE` with your OpenAI API Key.
+2. (Optionally) Setup virtual environment by running `pip install -m venv .venv` and then `pip install -r requirements.txt` in terminal from the root of your directory
+3. Rename the `.local.env` file to `.env`` and replace `YOUR_API_KEY_HERE` with your OpenAI API Key.
 4. Modify the `IGNORE_THESE` global var at the top of the script to specify directories and files you wish to exclude from monitoring. (You should comment out any large files like a virtual environment, cache, js libraries you have downloaded, etc...)
 5. Run the script using Python: python cody.py and follow terminal for setup. It will prompt you for if you want to use text chat (terminal) or conversational (speech i/o). It will also warn you if you remove .env from the ignore list.
 

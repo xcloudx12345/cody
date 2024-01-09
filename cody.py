@@ -122,15 +122,16 @@ def play_audio(file_path):
 
 
 def create_audio(text):
-    audio_folder = os.path.join(os.getcwd(), 'audio')
-    os.makedirs(audio_folder, exist_ok=True)
-    temp_file_path = os.path.join(audio_folder, 'response.mp3')
-    try:
-        speech = gTTS(text=text, lang='en', slow=False)
-        speech.save(temp_file_path)
-        print(f"\nCreated temp audio file in : {temp_file_path}")
-    except Exception as e:
-        print(f"\nError in creating audio: {e}")
+	"""
+	Create an audio file from text and return the path to a temporary file
+	"""
+	temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
+	print(f"\nCreated temp audio file in : {temp_file.name}")
+	try:
+		speech = gTTS(text=text, lang='en', slow=False)
+		speech.save(temp_file.name)
+	except Exception as e:
+		print(f"\nError in creating audio: {e}")
 
     return temp_file_path
 
@@ -139,6 +140,8 @@ def count_tokens(text):
 	tokens = text.split()
 	# Đếm và trả về số lượng token
 	return len(tokens)	
+	return temp_file.name
+	
 def generate_response(prompt, speak_response=True):
 
 	try:
@@ -180,6 +183,8 @@ def monitor_input(handler, terminal_input=True):
 		except Exception as e:
 			print(f"An error occurred: {e}")
 
+def start_cody(ignore_list=[]):
+	handler = FileChangeHandler(ignore_list=IGNORE_THESE)
 def start_cody():
 	#ignore_list=IGNORE_THESE
 	handler = FileChangeHandler(ignore_list=IGNORE_THESE)
@@ -211,4 +216,4 @@ def start_cody():
 	observer.join()
 
 if __name__ == "__main__":
-	start_cody()
+	start_cody(ignore_list=IGNORE_THESE)
