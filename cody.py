@@ -1,7 +1,8 @@
 from dotenv import load_dotenv
 from langchain.text_splitter import CharacterTextSplitter
 from langchain.embeddings.openai import OpenAIEmbeddings
-from langchain.vectorstores import FAISS
+from langchain_google_genai import ChatGoogleGenerativeAI,GoogleGenerativeAIEmbeddings 
+from langchain.vectorstores import faiss
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 import tempfile
@@ -13,28 +14,36 @@ import os
 import speech_recognition as sr
 from gtts import gTTS
 import pygame
-from litellm import completion 
+from google_text_to_speech import google_translate_tts
 load_dotenv()
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 
 ### USER OPTIONS ###
 ### MAX TOKENS PER CALL: MAX TOKENS TO USE FOR CALL
 MAX_TOKENS_PER_CALL = 2500 # MAX TOKENS TO USE FOR CALL
-IGNORE_THESE = ['.venv', '.env', 'static', 'dashboard/static', 'audio', 'license.md', '.github', '__pycache__']
+IGNORE_THESE = ['.venv', '.env', 'static', 'dashboard/static', 'audio', 'license.md', '.github', '__pycache__','.git']
 r = sr.Recognizer()
+
+llm_text=ChatGoogleGenerativeAI(
+	model="gemini-pro",
+	temperature=0.9,
+	top_p=0.9,
+    top_k=1,
+	convert_system_message_to_human = True)
 
 class FileChangeHandler(FileSystemEventHandler):
 	def __init__(self, ignore_list=[]):
 		super().__init__()
 		self._busy_files = {}
 		self.cooldown = 5.0  # Cooldown in seconds
-		self.ignore_list = ignore_list  # Ignore list
+		self.ignore_list = ['.venv', '.env', 'static', 'dashboard/static', 'audio', 'license.md', '.github', '__pycache__','.git']  # Ignore list
 		self.data = {}
 		self.knowledge_base = {}
-		self.embeddings = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY)
-
+		self.embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001",google_api_key=GOOGLE_API_KEY,task_type="retrieval_document")
 	def should_ignore(self, filename):
 		current_time = time.time()
+		if filename in self.ignore_list:
+			return False
 		if filename in self._busy_files:
 			if current_time - self._busy_files[filename] < self.cooldown:
 				return True
@@ -84,15 +93,16 @@ class FileChangeHandler(FileSystemEventHandler):
 		# Split combined text into chunks
 		text_splitter = CharacterTextSplitter(
 			separator=",",
-			chunk_size=1000,
+			chunk_size=1500,
 			chunk_overlap=200,
 			length_function=len,
 		)
 		chunks = text_splitter.split_text(combined_text)
 		# print(combined_text)
 		# Create or update the knowledge base
-		self.knowledge_base = FAISS.from_texts(chunks, self.embeddings)
-		
+		self.knowledge_base = faiss.FAISS.from_texts(chunks, self.embeddings)
+		if self.knowledge_base:
+			print("OK")
 		print("\U00002705 All set!")
 		audio_stream = create_audio("Files updated. Ready for questions")
 		play_audio(audio_stream)
@@ -125,21 +135,21 @@ def create_audio(text):
 		print(f"\nError in creating audio: {e}")
 
 	return temp_file.name
-	
+
+def count_tokens(text):
+	# Phân tách chuỗi văn bản thành các token dựa trên khoảng trắng
+	tokens = text.split()
+	# Đếm và trả về số lượng token
+	return len(tokens)	
 def generate_response(prompt, speak_response=True):
-	openai.api_key = OPENAI_API_KEY
+
 	try:
-		completion = completion(
-		model="gpt-3.5-turbo", 
-		messages=[{"role": "user", "content": prompt}],
-		max_tokens=MAX_TOKENS_PER_CALL,
-		)
-		print("\n\U0001F4B0 Tokens used:", completion.usage.total_tokens)
-		response_text = completion.choices[0].message.content
-		print('\U0001F916', response_text)
+		response_text = llm_text.invoke(prompt)
+		print("\n\U0001F4B0 Tokens used:", count_tokens(response_text.content))
+		print('\U0001F916', response_text.content)
 		if speak_response:
-			audio_stream = create_audio(response_text)
-			play_audio("audio/response.mp3")
+			audio_stream = create_audio(response_text.content)
+			play_audio(audio_stream)
 	except Exception as e:
 		print(f"\U000026A0 Error in generating response: {e}")
 
@@ -164,7 +174,7 @@ def monitor_input(handler, terminal_input=True):
 				docs = handler.knowledge_base.similarity_search(question)
 				response = f"You are an expert programmer who is aware of this much of the code base:{str(docs)}. \n"
 				response += "Please answer this: " + question + "..." # Add the rest of your instructions here
-				generate_response(response, speak_response=not terminal_input)
+				generate_response(response)
 		except sr.UnknownValueError:
 			print("\nCould not understand audio")
 		except sr.RequestError as e:
@@ -172,8 +182,9 @@ def monitor_input(handler, terminal_input=True):
 		except Exception as e:
 			print(f"An error occurred: {e}")
 
-def start_cody(ignore_list=[]):
-	handler = FileChangeHandler(ignore_list=IGNORE_THESE)
+def start_cody():
+	#ignore_list=IGNORE_THESE
+	handler = FileChangeHandler()
 
 	# Collect files before starting the observer
 	handler.update_file_content()  # Directly call the update_file_content method
@@ -202,4 +213,4 @@ def start_cody(ignore_list=[]):
 	observer.join()
 
 if __name__ == "__main__":
-	start_cody(ignore_list=IGNORE_THESE)
+	start_cody()
