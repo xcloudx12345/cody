@@ -1,7 +1,7 @@
 from dotenv import load_dotenv
 from langchain.text_splitter import CharacterTextSplitter
 from langchain_google_genai import ChatGoogleGenerativeAI,GoogleGenerativeAIEmbeddings 
-from langchain.vectorstores import faiss
+from langchain.vectorstores import FAISS
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 import tempfile
@@ -18,8 +18,8 @@ GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 
 ### USER OPTIONS ###
 ### MAX TOKENS PER CALL: MAX TOKENS TO USE FOR CALL
-MAX_TOKENS_PER_CALL = 2500 # MAX TOKENS TO USE FOR CALL
-IGNORE_THESE = ['.venv', '.env', 'static', 'dashboard/static', 'audio', 'license.md', '.github', '__pycache__','.git']
+MAX_TOKENS_PER_CALL = 3000 # MAX TOKENS TO USE FOR CALL
+IGNORE_THESE = ['.venv', '.env', 'static', 'dashboard/static', 'audio', 'license.md', '.github', '__pycache__','.git',"requirements.txt"]
 r = sr.Recognizer()
 
 llm_text=ChatGoogleGenerativeAI(
@@ -37,7 +37,7 @@ class FileChangeHandler(FileSystemEventHandler):
 		self.ignore_list = IGNORE_THESE  # Ignore list
 		self.data = {}
 		self.knowledge_base = {}
-		self.embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001",google_api_key=GOOGLE_API_KEY,task_type="retrieval_query")
+		self.embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001",task_type="retrieval_query")
 	def should_ignore(self, filename):
 		current_time = time.time()
 
@@ -98,16 +98,14 @@ class FileChangeHandler(FileSystemEventHandler):
 		# Split combined text into chunks
 		text_splitter = CharacterTextSplitter(
 			separator=",",
-			chunk_size=1500,
+			chunk_size=1000,
 			chunk_overlap=200,
 			length_function=len,
 		)
 		chunks = text_splitter.split_text(combined_text)
 		# print(combined_text)
 		# Create or update the knowledge base
-		self.knowledge_base = faiss.FAISS.from_texts(chunks, self.embeddings)
-		if self.knowledge_base:
-			print("OK")
+		self.knowledge_base = FAISS.from_texts(chunks, self.embeddings)
 		print("\U00002705 All set!")
 		audio_stream = create_audio("Files updated. Ready for questions")
 		play_audio(audio_stream)
@@ -146,7 +144,7 @@ def count_tokens(text):
 	tokens = text.split()
 	# Đếm và trả về số lượng token
 	return len(tokens)	
-def generate_response(prompt, speak_response=True):
+def generate_response(prompt, speak_response:bool = False):
 
 	try:
 		response_text = llm_text.invoke(prompt)
@@ -158,7 +156,7 @@ def generate_response(prompt, speak_response=True):
 	except Exception as e:
 		print(f"\U000026A0 Error in generating response: {e}")
 
-def monitor_input(handler, terminal_input=True):
+def monitor_input(handler:FileChangeHandler, terminal_input=True):
 	while True:
 		try:
 			if terminal_input:

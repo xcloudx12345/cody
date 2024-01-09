@@ -1,7 +1,7 @@
 from dotenv import load_dotenv
 from langchain.text_splitter import CharacterTextSplitter
 from langchain_google_genai import ChatGoogleGenerativeAI,GoogleGenerativeAIEmbeddings 
-from langchain.vectorstores import faiss
+from langchain.vectorstores import FAISS
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 import tempfile
@@ -37,7 +37,7 @@ class FileChangeHandler(FileSystemEventHandler):
 		self.ignore_list = IGNORE_THESE  # Ignore list
 		self.data = {}
 		self.knowledge_base = {}
-		self.embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001",google_api_key=GOOGLE_API_KEY,task_type="retrieval_query")
+		self.embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001",task_type="retrieval_query")
 	def should_ignore(self, filename):
 		current_time = time.time()
 
@@ -105,9 +105,7 @@ class FileChangeHandler(FileSystemEventHandler):
 		chunks = text_splitter.split_text(combined_text)
 		# print(combined_text)
 		# Create or update the knowledge base
-		self.knowledge_base = faiss.FAISS.from_texts(chunks, self.embeddings)
-		if self.knowledge_base:
-			print("OK")
+		self.knowledge_base = FAISS.from_texts(chunks, self.embeddings)
 		print("\U00002705 All set!")
 		audio_stream = create_audio("Files updated. Ready for questions")
 		play_audio(audio_stream)
@@ -146,7 +144,7 @@ def count_tokens(text):
 	tokens = text.split()
 	# Đếm và trả về số lượng token
 	return len(tokens)	
-def generate_response(prompt, speak_response=False):
+def generate_response(prompt, speak_response:bool = False):
 
 	try:
 		response_text = llm_text.invoke(prompt)
